@@ -18,14 +18,10 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.filter.CorsFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
-import java.util.*;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-
-
-
-
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpMethod;
 @Configuration
 @EnableWebSecurity
 public class SpringSecurity {
@@ -42,12 +38,21 @@ public class SpringSecurity {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/Employee/login", "/Employee/signup", "/images/**","/profile/**").permitAll()
-                        .requestMatchers("/dashboard/**", "/Attendance/**", "/profile/**", "/images/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Allow OPTIONS requests
+                        .requestMatchers("/error").permitAll() // Allow error endpoint
+                        .requestMatchers("/Employee/login", "/Employee/signup", "/signup", "/login",
+                                "/images/**", "/profile/**").permitAll()
+                        .requestMatchers("/dashboard/**", "/Attendance/**", "/profile/**",
+                                "/images/**").hasAnyRole("USER", "ADMIN")
                         .anyRequest().authenticated()
                 )
-
                 .authenticationProvider(authenticationProvider())
+                .exceptionHandling(handling -> handling
+                        .authenticationEntryPoint((request, response, exception) -> {
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.getWriter().write("Unauthorized: " + exception.getMessage());
+                        })
+                )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -65,41 +70,24 @@ public class SpringSecurity {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
-//    @Bean
-//    public FilterRegistrationBean<CorsFilter> corsFilter() {
-//        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-//        CorsConfiguration corsConfiguration = new CorsConfiguration();
-//
-//        corsConfiguration.setAllowCredentials(true);
-//        corsConfiguration.addAllowedOriginPattern("*"); // Allow all origins
-//        corsConfiguration.addAllowedHeader("*"); // Allow all headers
-//        corsConfiguration.addAllowedMethod("*"); // Allow all methods (GET, POST, PUT, DELETE, OPTIONS)
-//        corsConfiguration.setMaxAge(3600L); // Cache for 1 hour
-//
-//        source.registerCorsConfiguration("/**", corsConfiguration);
-//        FilterRegistrationBean<CorsFilter> bean = new FilterRegistrationBean<>(new CorsFilter(source));
-//        bean.setOrder(0);
-//        return bean;
-//    }
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowCredentials(true);
-        configuration.addAllowedOriginPattern("*"); // Allow all origins
-        configuration.addAllowedHeader("*"); // Allow all headers
-        configuration.addAllowedMethod("*"); // Allow all methods (GET, POST, PUT, DELETE, OPTIONS)
-        configuration.setMaxAge(3600L); // Cache for 1 hour
+        configuration.addAllowedOriginPattern("*");
+        configuration.addAllowedHeader("*");
+        configuration.addAllowedMethod("*");
+        configuration.setMaxAge(3600L);
+        configuration.addExposedHeader("Authorization"); // Add this if you're using JWT in headers
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
-
-
-
 }
