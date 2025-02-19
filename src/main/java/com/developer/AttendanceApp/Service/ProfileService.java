@@ -7,7 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -31,7 +31,6 @@ public class ProfileService {
                 return null;
             }
 
-            // Debug logs
             System.out.println("Before update: " + user);
 
             // Update fields
@@ -43,7 +42,19 @@ public class ProfileService {
                 System.out.println("Uploading file: " + file.getOriginalFilename());
                 String fileName = email + "_" + file.getOriginalFilename();
                 Path filePath = Paths.get(uploadDir, fileName);
-                System.out.println("Saving file to: " + filePath);
+
+                // ✅ Ensure directory exists before saving
+                File directory = new File(uploadDir);
+                if (!directory.exists()) {
+                    boolean created = directory.mkdirs();
+                    if (created) {
+                        System.out.println("Created directory: " + uploadDir);
+                    } else {
+                        System.out.println("Failed to create directory: " + uploadDir);
+                        return null;
+                    }
+                }
+
                 Files.write(filePath, file.getBytes());
                 user.setProfilePicture("/images/" + fileName);
             }
