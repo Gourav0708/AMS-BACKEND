@@ -2,6 +2,7 @@ package com.developer.AttendanceApp.Service;
 
 import com.developer.AttendanceApp.Entity.Employee;
 import com.developer.AttendanceApp.Repository.EmployeeRepo;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -21,43 +22,42 @@ public class ProfileService {
     private EmployeeRepo employeeRepo;
 
     // Update Name, Address, Position, and Profile Picture in one method
+    @Transactional
     public Employee updateProfile(String email, String name, String address, String position, MultipartFile file) {
         try {
             Employee user = employeeRepo.findByEmail(email);
             if (user == null) {
+                System.out.println("User not found in DB!");
                 return null;
             }
 
-            // Update user details
+            // Debug logs
+            System.out.println("Before update: " + user);
+
+            // Update fields
             user.setName(name);
             user.setAddress(address);
             user.setPosition(position);
 
-            // Update profile picture if a new file is provided
             if (file != null && !file.isEmpty()) {
                 System.out.println("Uploading file: " + file.getOriginalFilename());
-
                 String fileName = email + "_" + file.getOriginalFilename();
                 Path filePath = Paths.get(uploadDir, fileName);
-
-                System.out.println("Saving file to: " + filePath.toString());
-
+                System.out.println("Saving file to: " + filePath);
                 Files.write(filePath, file.getBytes());
-
-                String newProfilePicturePath = "/images/" + fileName;
-                System.out.println("Updated Profile Picture Path: " + newProfilePicturePath);
-
-                user.setProfilePicture(newProfilePicturePath);
+                user.setProfilePicture("/images/" + fileName);
             }
 
-
             employeeRepo.save(user);
+            System.out.println("After update: " + user);
+
             return user;
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
     }
+
 
 
 
